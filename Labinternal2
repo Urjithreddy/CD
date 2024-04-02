@@ -1,0 +1,135 @@
+--------------------
+def compute_first_follow(g):
+    f, fo = {}, {}
+    
+    def first(s):
+        if s.isupper():
+            if s not in f:
+                f[s] = set().union(*[fs(p) for p in g[s]])
+            return f[s]
+        return {s}
+    
+    def fs(symbols):
+        fs_set = set()
+        for sym in symbols:
+            fs_set.update(first(sym))
+            if 'ε' not in fs_set:
+                break
+        if 'ε' in fs_set:
+            fs_set.remove('ε')
+        return fs_set
+    
+    for nt in g:
+        first(nt)
+    
+    start_symbol = next(iter(g))
+    fo[start_symbol] = {'$'}
+    
+    for nt in g:
+        for prod in g[nt]:
+            for i, sym in enumerate(prod):
+                if sym.isupper():
+                    fo_set = fo.get(sym, set())
+                    if i == len(prod) - 1:
+                        if nt != start_symbol:
+                            fo_set.update(fo[nt])
+                    else:
+                        fo_set.update(fs(prod[i+1:]))
+                        if 'ε' in fo_set:
+                            fo_set.remove('ε')
+                            if nt != start_symbol:
+                                fo_set.update(fo[nt])
+                    fo[sym] = fo_set
+    
+    return f, fo
+
+# Example grammar
+g = {
+    'S': [['A', 'B']],
+    'A': [['a', 'A'], ['B']],
+    'B': [['b', 'B'], ['a']]
+}
+
+f, fo = compute_first_follow(g)
+
+print("F:")
+for nt, fs_set in f.items():
+    print(f"{nt}: {fs_set}")
+
+print("\nFo:")
+for nt, fo_set in fo.items():
+    print(f"{nt}: {fo_set}")
+----------------------------------------
+
+=================================================
+def left_factor(p):
+    np = {}
+    for nt, r in p.items():
+        cp = {}
+        for rule in r:
+            prefix = rule[0]
+            if prefix not in cp:
+                cp[prefix] = []
+            cp[prefix].append(rule[1:])
+        for prefix, suffixes in cp.items():
+            if len(suffixes) > 1:
+                nnt = f"{nt}'"
+                np[nnt] = [prefix + nnt for prefix in suffixes]
+                for i, rule in enumerate(r):
+                    if rule.startswith(prefix):
+                        r[i] = prefix + nnt
+        np[nt] = r
+    return np
+
+# Example usage:
+p = {
+    'S': ['aAbc', 'aAd'],
+    'A': ['b']
+}
+
+np = left_factor(p)
+for nt, r in np.items():
+    print(nt, '->', '|'.join(r))
+--------------------------------------
+
+==========================================
+
+
+
+
+def remove_left_recursion(g):
+    ng = {}
+    for nt, p in g.items():
+        np = []
+        lr = []
+        for prod in p:
+            if prod and prod[0] == nt:
+                lr.append(prod[1:])
+            else:
+                np.append(prod)
+        if lr:
+            nnt = f"{nt}'"
+            ng[nnt] = [pr + [nnt] for pr in lr] + [['ε']]
+            np += [pr + [nnt] for pr in np for _ in ng[nnt]]
+        ng[nt] = np
+    return ng
+
+g = {
+    'S': [['S', 'a'], ['b']],
+    'A': [['c', 'A', 'd'], ['e']]
+}
+
+print("Original:")
+for nt, p in g.items():
+    print(f"{nt} -> {' | '.join([''.join(prod) for prod in p])}")
+
+ng = remove_left_recursion(g)
+
+print("\nWithout Left Recursion:")
+for nt, p in ng.items():
+    print(f"{nt} -> {' | '.join([''.join(prod) for prod in p])}")
+
+
+
+
+
